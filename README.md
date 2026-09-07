@@ -75,13 +75,17 @@ bash scripts/setup.sh
 ### 持续听课一条命令（推荐）
 
 ```bash
-# 监听 B站直播间，抓主播+主题自动建 user/session/<主播>_<主题>_<时间>/ 目录，
-# 近流式(5s)实时把文字追加进 transcript.txt，下播自动停录收尾：
-python scripts/listen.py --room <B站直播间号> --user <你的标识>
+# 给任意直播链接即可——能抓(B站等)自动按 主播_主题_时间 建目录，
+# 抓不到(抖音/小红书/视频号等)自动降级为纯时间目录，照常内录：
+python scripts/listen.py --url <任意直播URL> --user <你的标识>
 
-# 没人值守跑一整场（未开播会等），后台：
-nohup python scripts/listen.py --room <房间号> --user me --wait-start \
-      > user/listen_me.log 2>&1 &
+# B站数字简写：
+python scripts/listen.py --room <B站房间号> --user <你的标识>
+
+# 没人值守跑一整场（未开播会等、下播自动收尾），后台：
+nohup python scripts/listen.py --url https://live.bilibili.com/1816490612 \
+      --user me --wait-start > user/listen_me.log 2>&1 &
+# 盲录平台(抖音/小红书等)无法自动判下播，请务必加 --max-minutes 定时收尾
 ```
 
 ### 命令行（不含总结）

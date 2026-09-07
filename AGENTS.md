@@ -49,7 +49,7 @@ live-class-skill/
 │   ├── cuda_rt.py           # CUDA 运行库只读探测/注入（GPU 加速）
 │   ├── accel.py             # 加速档位决策（GPU优先/CPU兜底）
 │   ├── transcribe.py        # 转写（sherpa-onnx，GPU优先/CPU兜底）
-│   ├── listen.py            # 持续听课编排（抓主题建目录/近流式/自动收尾）
+│   ├── listen.py            # 持续听课编排（认任意直播URL/抓数据或降级/近流式/自动收尾）
 │   └── ...                  # (mac 遗留脚本，勿删)
 ├── user/                    # 听课产出根（本地产出，不入库），见 user/README.md
 └── AGENTS.md
@@ -79,15 +79,20 @@ live-class-skill/
 
 - **推荐一条命令听完一整场**，别再用"手动起 record + 起 transcribe + 盯结束"的散装流程：
   ```bash
-  python scripts/listen.py --room <B站直播间号> --user <使用者> [--wait-start]
+  python scripts/listen.py --url <任意直播URL> --user <听课人> [--wait-start]
+  # B站数字简写： python scripts/listen.py --room <房间号> --user <听课人>
   ```
-  自动完成：抓直播主题建目录 → 内录(默认 5s 近流式小分块) → 秒级增量转写出字 →
-  周期检测下播 → 自动停录收尾 → 产出最终 `transcript.txt`。可 nohup 无人值守。
-- **产出落盘规范（单一可信源）**：一律落 `user/session/<主播账号>_<直播主题>_<开始时间>/`，
-  主播账号+主题+时间全拼在目录名里（主播名/主题均自动抓取，取不到降级 room<id>；
-  `--user` 听课人仅记入 meta.json 不进目录名）。目录下含 `chunks/`(音频)、
+  自动完成：认链接 → (能抓则)抓主播/主题建目录 → 内录(默认 5s 近流式小分块) →
+  秒级增量转写出字 → 周期检测下播 → 自动停录收尾 → 产出最终 `transcript.txt`。可 nohup 无人值守。
+- **产出落盘规范（单一可信源）**：一律落 `user/session/<名字>/`。命名走**降级链**：
+  能抓到主播/主题(B站等公开接口) → `<主播账号>_<直播主题>_<开始时间>/`；
+  **抓不到(抖音/小红书/视频号等无接口，且禁浏览器自动化) → 目录=纯本地时间 `<YYYYMMDD-HHMM>/`**，
+  不报错照常内录。抓取仅用公开接口直连，绝不碰浏览器自动化。
+  `--user` 听课人仅记入 meta.json 不进目录名。目录下含 `chunks/`(音频)、
   `transcripts/transcript.txt`(实时追加的最终文字稿)、`segments.jsonl`、
   `meta.json`、各日志。这些是**本地产出，不入版本库**(已在 .gitignore 排除)，见 user/README.md。
+- **两种收尾模式**：B站等有 live_status 接口 → 连续下播自动停；盲录平台抓不到状态 →
+  无法自动判下播，用 `--max-minutes` 定时或 Ctrl-C 收尾（盲录务必设 --max-minutes）。
 - 手动起零件(record/transcribe)仅用于调试；正式"持续听课"走 listen.py。
 
 ## 6. 修改守则
