@@ -75,13 +75,13 @@ bash scripts/setup.sh
 ### 持续听课一条命令（推荐）
 
 ```bash
-# 监听 B站直播间，抓主题自动建 user/<你>/session/<时间>_<主题>/ 目录，
+# 监听 B站直播间，抓主播+主题自动建 user/session/<主播>_<主题>_<时间>/ 目录，
 # 近流式(5s)实时把文字追加进 transcript.txt，下播自动停录收尾：
 python scripts/listen.py --room <B站直播间号> --user <你的标识>
 
 # 没人值守跑一整场（未开播会等），后台：
 nohup python scripts/listen.py --room <房间号> --user me --wait-start \
-      > user/me/listen.log 2>&1 &
+      > user/listen_me.log 2>&1 &
 ```
 
 ### 命令行（不含总结）

@@ -6,13 +6,14 @@
 串成一条命令，可无人值守跑 60 分钟以上一整场直播。
 
 会话落盘规范（单一可信源）：
-    <skill>/user/<使用者>/session/<YYYYMMDD-HHMM>_<直播主题>/
-        ├── meta.json                 # room/url/标题/开始时间/段长 等
+    <skill>/user/session/<主播账号>_<直播主题>_<YYYYMMDD-HHMM>/
+        ├── meta.json                 # room/url/标题/主播uid与名/听课人/开始时间/段长 等
         ├── chunks/seg_*.wav          # 音频分块（默认 5s 一段，近流式粒度）
         ├── transcripts/
         │   ├── segments.jsonl       # 逐段结构化转写（实时追加）
         │   └── transcript.txt       # 纯文字稿（实时追加，最终交付物）
         ├── record.log / transcribe.log / listen.log
+主播账号、直播主题均自动从 B站接口抓取（主播名取不到时降级 room<id>）。
 "近流式"= 内录按约 5s 高频落小分块，转写器秒级增量处理，观感接近实时字幕；
   该小模型(离线 int8 zipformer-ctc)转写远快于录音，无累积延迟，可稳定跑很久。
 
@@ -20,11 +21,11 @@
     python scripts/listen.py --room <B站直播间号> --user <使用者> [选项]
   # 没人值守后台跑：
   nohup python scripts/listen.py --room 1816490612 --user me --wait-start \
-        > user/<me>/listen.log 2>&1 &
+        > user/listen_me.log 2>&1 &
 
 选项：
   --room ID             B站直播间号(必填)
-  --user NAME           使用者标识，决定 user/<NAME>/ 归属(必填)
+  --user NAME           听课人标识(仅记入 meta.json，不进目录名)
   --segment SEC         音频分块秒数，越小越接近流式(默认 5)
   --poll SEC            结束检测轮询间隔秒(默认 30)
   --down N              连续 N 次检测到下播即结束(默认 5，约 2.5 分钟)
@@ -50,6 +51,7 @@ import common  # noqa: E402
 IS_WIN = os.name == "nt"
 SKILL = common.SKILL_DIR
 ROOM_API = "https://api.live.bilibili.com/room/v1/Room/get_info?room_id={}"
+CARD_API = "https://api.bilibili.com/x/web-interface/card?mid={}"
 
 
 # ---------------------------------------------------------------- 小工具
@@ -77,6 +79,22 @@ def room_title(room):
     return (room_info(room).get("title") or "").strip()
 
 
+def room_owner(room):
+    """返回直播间房主（主播）的 B站昵称，自动抓取；失败返回空串。
+
+    先由 get_info 拿 uid，再用 card 接口按 mid 拿昵称(name)。
+    """
+    try:
+        uid = room_info(room).get("uid")
+        if not uid:
+            return ""
+        d = http_json(CARD_API.format(uid)) or {}
+        card = d.get("data") or {}
+        return ((card.get("card") or {}).get("name") or "").strip()
+    except Exception:
+        return ""
+
+
 def clean_seg(name):
     """清成可用作路径的单段名：去掉 Windows 非法/控制字符，压空白，截断。"""
     name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", name).strip()
@@ -84,15 +102,19 @@ def clean_seg(name):
     return name[:80].strip("_.") or "untitled"
 
 
-def build_session_dir(user, room):
-    """返回 user/<user>/session/<时间>_<主题> 目录，并自动补主题。"""
-    if not user:
-        user = os.environ.get("USERNAME") or os.environ.get("USER") or "me"
-    owner = clean_seg(user) or "me"
+def build_session_dir(room):
+    """返回 user/session/<主播账号>_<直播主题>_<开始时间> 目录，账号/主题自动抓。
+
+    主播账号、直播主题、开始时间三要素平铺进同一个目录名，不单独占层。
+    主播名取不到时降级用 room<id>。
+    例如：user/session/天津极品相声帮_直播时间每日1500二四六晚2000_20260907-1751/
+    """
     now = datetime.datetime.now()
+    owner = clean_seg(room_owner(room)) or f"room{room}"
     title = clean_seg(room_title(room)) or f"room{room}"
-    rel = os.path.join("user", owner, "session",
-                       f"{now.strftime('%Y%m%d-%H%M')}_{title}")
+    rel = os.path.join(
+        "user", "session",
+        f"{owner}_{title}_{now.strftime('%Y%m%d-%H%M')}")
     return os.path.join(SKILL, rel)
 
 
@@ -148,7 +170,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--room", required=True, help="B站直播间号")
-    ap.add_argument("--user", default="", help="使用者标识(user/<NAME>/)，默认取系统用户名")
+    ap.add_argument("--user", default="", help="听课人标识(仅记入 meta.json 归属，不进目录名)，默认取系统用户名")
     ap.add_argument("--segment", type=int, default=5, help="音频分块秒数(近流式粒度，默认5)")
     ap.add_argument("--poll", type=int, default=30, help="结束检测轮询间隔秒(默认30)")
     ap.add_argument("--down", type=int, default=5, help="连续 N 次下播判定结束(默认5)")
@@ -174,8 +196,9 @@ def main():
             time.sleep(a.poll)
         print("[listen] 直播已开始。")
 
-    session = build_session_dir(a.user, a.room)
-    print(f"[listen] 直播间 {a.room} | 主题: {title or '(未取到)'}")
+    owner = room_owner(a.room)
+    session = build_session_dir(a.room)
+    print(f"[listen] 直播间 {a.room} | 主播: {owner or '(未取到)'} | 主题: {title or '(未取到)'}")
     print(f"[listen] 会话目录: {session}")
     print(f"[listen] 音频分块: {seg}s/段 (近流式出字)")
 

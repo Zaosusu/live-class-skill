@@ -83,8 +83,10 @@ live-class-skill/
   ```
   自动完成：抓直播主题建目录 → 内录(默认 5s 近流式小分块) → 秒级增量转写出字 →
   周期检测下播 → 自动停录收尾 → 产出最终 `transcript.txt`。可 nohup 无人值守。
-- **产出落盘规范（单一可信源）**：一律落 `user/<使用者>/session/<开始时间>_<直播主题>/`，
-  下含 `chunks/`(音频)、`transcripts/transcript.txt`(实时追加的最终文字稿)、`segments.jsonl`、
+- **产出落盘规范（单一可信源）**：一律落 `user/session/<主播账号>_<直播主题>_<开始时间>/`，
+  主播账号+主题+时间全拼在目录名里（主播名/主题均自动抓取，取不到降级 room<id>；
+  `--user` 听课人仅记入 meta.json 不进目录名）。目录下含 `chunks/`(音频)、
+  `transcripts/transcript.txt`(实时追加的最终文字稿)、`segments.jsonl`、
   `meta.json`、各日志。这些是**本地产出，不入版本库**(已在 .gitignore 排除)，见 user/README.md。
 - 手动起零件(record/transcribe)仅用于调试；正式"持续听课"走 listen.py。
 
