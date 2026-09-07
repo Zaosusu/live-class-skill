@@ -13,7 +13,10 @@
 // 输出与旧方案完全兼容：16kHz 单声道 16bit PCM 的 wav 分块，transcribe.py 直接可用。
 //
 // 注意: 需求 macOS 14+（capturesAudio 特性）。Apple Silicon 与 Intel 均可。
-// 静音期间不产生分块；停止时不足一段的尾块也会落盘，避免丢内容。
+// 分块策略：无论有声无声都按 segment 持续落盘（静音期落全零块），先写 .part、
+// 写完 rename 成 .wav（防转写读到半截）。停止时不足一段的尾块也会落盘，避免丢内容。
+// 「连续静音超时」等结束判定由上层 listen.py 读分块音频能量完成，勿在此做 VAD 门控，
+// 否则 mtime/落盘语义会与 listen 的能量判定产生歧义（历史教训，见 git log）。
 
 import Foundation
 import ScreenCaptureKit
@@ -91,7 +94,10 @@ final class ChunkWriter {
     }
 
     private func openNewLocked() throws {
-        let name = "seg_\(ChunkWriter.tsFormatter.string(from: Date())).wav"
+        // 先写 .part 临时名，finalize 完再 rename 成 .wav：保证 transcribe
+        // watch 进程永远只见到「已写完整」的块（否则会读到写了一半的 0 帧块，
+        // 误判静音并永久跳过，导致整场直播转不出字）。
+        let name = "seg_\(ChunkWriter.tsFormatter.string(from: Date())).wav.part"
         currentURL = dir.appendingPathComponent(name)
         let fm = FileManager.default
         guard fm.createFile(atPath: currentURL!.path, contents: nil) else {
@@ -129,8 +135,13 @@ final class ChunkWriter {
         try fh.write(contentsOf: withUnsafeBytes(of: &b) { Data($0) })
         try fh.close()
         self.fh = nil
+        // 写完整后 rename 成 .wav（去掉 .part），转写侧只认 .wav
+        if url.pathExtension == "part" {
+            let finalURL = url.deletingPathExtension()
+            try? FileManager.default.moveItem(at: url, to: finalURL)
+        }
         let secs = String(format: "%.1f", Double(samples) / Double(SAMPLE_RATE))
-        log("chunk 写出 \(url.lastPathComponent)（\(secs)s 音频）")
+        log("chunk 写出 \(url.deletingPathExtension().lastPathComponent)（\(secs)s 音频）")
     }
 
     /// 停止时封口尾块（不足一段也落盘）

@@ -94,9 +94,11 @@ live-class-skill/
   `--user` 听课人仅记入 meta.json 不进目录名。目录下含 `chunks/`(音频)、
   `transcripts/transcript.txt`(实时追加的最终文字稿)、`segments.jsonl`、
   `meta.json`、各日志。这些是**本地产出，不入版本库**(已在 .gitignore 排除)，见 user/README.md。
-- **两种收尾模式**：B站等有 live_status 接口 → 连续下播自动停；盲录平台(抖音/小红书等)
-  无状态接口 → 用「连续静音超时」自动收尾（--silent-timeout，默认 3 分钟；内录静音不落分块，
-  故以"长时间无新分块"判结束），可叠加 --max-minutes 定时兜底或 Ctrl-C。
+- **统一静音超时收尾（全平台）**：连续 `--silent-timeout` 分钟（默认 3）无**真实声音**
+  即自动收尾。实现靠读分块音频能量判定（内录端静音期间也会持续落全零分块、文件名/
+  时间戳照常刷新，故不能拿"最新分块时间"近似，必须读能量），见 listen.py `latest_speech_time`。
+  B站另有 live_status 下播接口（更快更准，先触发）；直播流在播但长时间无声
+  （主播挂机/画面停滞）由同一静音超时兜底。可叠加 --max-minutes 定时兜底或 Ctrl-C。
 - 手动起零件(record/transcribe)仅用于调试；正式"持续听课"走 listen.py。
 - **平台落点**：mac 收音实现（capture.swift / record.py / setup.sh）与 mac 主手册
   （根 SKILL.md）在仓库根；Windows 的全部在 `win/`。

@@ -163,7 +163,7 @@ python <skill>\win\scripts\record.py stop --session %SESSION%   :: 1. 通知内�
 | 声音忽断 | 网络卡顿属正常，恢复自动续录；持续静音按第 6 步处理 |
 | setup 显示走 CPU 而非 GPU | 机器无 NVIDIA GPU，或有 GPU 但未找到 CUDA 运行库（PyTorch 自带 / 系统 Toolkit 均可被识别）。CPU 档也能用，只是略慢；装了 CUDA 后重跑 setup.py --fix 即可切 GPU |
 | 磁盘占用 | 20s×16k 单声道约 115MB/小时，可接受 |
-| 静音段无分块 | 正常设计：有声才落盘，转写只处理实际内容 |
+| 静音段无分块 | 内录端可能仍会落全零块；listen.py 静音超时按**真实音频能量**判定（见根 scripts/listen.py `latest_speech_time`），与落盘策略无关 |
 
 ## 已知边界
 - 只录系统正在播放的声音（直播内容），不录麦克风；
