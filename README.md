@@ -1,28 +1,36 @@
 # 听课 Skill（live-class-skill）
 
-直播课 / 线上课程 / 会议「代听」助手 —— **打开网页 → 自动录制系统声音 → 本地转写 → 结束后生成结构化笔记**。
+直播课 / 线上课程 / 会议「代听」助手 —— **打开网页 → 内录系统声音 → 本地转写 → 结束后生成结构化笔记**。
 适用于 B站 / 抖音 / 小红书 / 视频号 / 腾讯会议等任何能在浏览器出声的直播与线上课。
+
+> **平台**：本 skill 一份仓库分两版运行——
+> - **macOS 版**：见 [`SKILL.md`](SKILL.md)（ScreenCaptureKit 收音）。
+> - **Windows 版**：见 [`win/SKILL_win.md`](win/SKILL_win.md)（WASAPI loopback 内录，零第三方）。
+> 两版共用同一离线转写引擎与模型（根 `scripts/`）。
+> **反浏览器自动化铁律**（防封号）见 [`AGENTS.md`](AGENTS.md)：本 skill 只监听系统声音，
+> 打开直播网页由用户自己完成，所有 agent 一律不得驱动/注入/读取浏览器。
 
 > 为什么做这个：直播课往往和上班/生活时间冲突。挂着让 AI 替你「听」，
 > 结束后直接拿到**逐字稿 + 要点总结 + 行动项**，不用回看几小时视频。
 
 ## ✨ 亮点
 
-- **零安装、零系统组件**：不装虚拟声卡（无需 BlackHole / Soundflower）、不装 ffmpeg、不切换系统输出设备。
-  直接使用 macOS 系统自带 **ScreenCaptureKit**（苹果官方框架，OBS 同款技术）捕获"正在播放的系统声音"。
-  只需一次性授予**「屏幕录制」隐私权限**（可随时在设置里关闭）。
+- **零安装、零第三方内录**：不装虚拟声卡（无需 BlackHole / Soundflower / VB-Cable）、不装 ffmpeg、不切换系统输出设备。
+  - macOS：系统自带 **ScreenCaptureKit**（OBS 同款），只需一次性「屏幕录制」授权；
+  - Windows：系统自带 **WASAPI loopback**（纯 ctypes 调系统 Core Audio），无需授权、无需装任何软件。
 - **100% 本地转写**：sherpa-onnx + 中文 zipformer-ctc 离线模型，不上传任何音频，不花钱，速度远超实时
-  （实测 10 秒音频约 0.15 秒识别完成）。
+  （实测 10 秒音频约 0.15 秒识别完成）。mac/win 共用同一模型缓存。
 - **增量转录**：边录边转，随时可看已转内容；中断可续跑，不丢进度。
 - **边听边录不冲突**：不改变系统输出，你可以照常戴耳机/外放做别的事，互不干扰。
+- **零浏览器自动化**：不驱动浏览器，打开直播页由用户手动完成（防平台封号）。
 
 ## 原理
 
 ```
-浏览器/App 播放直播声音 ──▶ macOS 系统混音器
-                                 │ ScreenCaptureKit（macOS 14+ 系统自带）
+浏览器/App 播放直播声音 ──▶ 系统混音器
+                                 │ macOS ScreenCaptureKit  /  Windows WASAPI loopback
                                  ▼
-                capture 工具 ──▶ chunks/seg_*.wav（20s 分块，16kHz 单声道）
+                内录工具 ──▶ chunks/seg_*.wav（20s 分块，16kHz 单声道）
                                  │
                 transcribe.py ──▶ segments.jsonl + transcript.txt（本地 ASR 增量转写）
                                  ▼
