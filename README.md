@@ -72,6 +72,18 @@ bash scripts/setup.sh
 
 ## 用法
 
+### 持续听课一条命令（推荐）
+
+```bash
+# 监听 B站直播间，抓主题自动建 user/<你>/session/<时间>_<主题>/ 目录，
+# 近流式(5s)实时把文字追加进 transcript.txt，下播自动停录收尾：
+python scripts/listen.py --room <B站直播间号> --user <你的标识>
+
+# 没人值守跑一整场（未开播会等），后台：
+nohup python scripts/listen.py --room <房间号> --user me --wait-start \
+      > user/me/listen.log 2>&1 &
+```
+
 ### 命令行（不含总结）
 
 ```bash
@@ -118,6 +130,7 @@ Agent 会按 [`SKILL.md`](SKILL.md) 的 10 步流程自动完成：开直播页 
     ├── capture.swift       # 系统声音捕获（ScreenCaptureKit，编译产物 bin/capture）
     ├── record.py           # 捕获启停入口（check / start / stop）
     ├── transcribe.py       # 增量本地转写（sherpa-onnx，--watch 轮询）
+    ├── listen.py           # 持续听课编排（推荐入口：近流式实时出字 + 自动收尾）
     ├── common.py           # 环境探测（可移植，支持 LCC_PYTHON / LCC_MODELS_DIR 覆盖）
     └── setup.sh            # 一键环境检查/修复
 ```

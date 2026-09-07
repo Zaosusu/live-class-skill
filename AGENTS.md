@@ -49,7 +49,9 @@ live-class-skill/
 │   ├── cuda_rt.py           # CUDA 运行库只读探测/注入（GPU 加速）
 │   ├── accel.py             # 加速档位决策（GPU优先/CPU兜底）
 │   ├── transcribe.py        # 转写（sherpa-onnx，GPU优先/CPU兜底）
+│   ├── listen.py            # 持续听课编排（抓主题建目录/近流式/自动收尾）
 │   └── ...                  # (mac 遗留脚本，勿删)
+├── user/                    # 听课产出根（本地产出，不入库），见 user/README.md
 └── AGENTS.md
 ```
 
@@ -73,7 +75,20 @@ live-class-skill/
   4. 可顺带告知"可选配第三方 ASR API"，但**用户不配/不懂 → 继续用默认档位**，绝不强制。
 - 改这里务必保持 CPU 兜底路径可用——它是"开箱即用"的最后防线。
 
-## 5. 修改守则
+## 5. 持续听课：统一编排 listen.py 与产出落盘规范
+
+- **推荐一条命令听完一整场**，别再用"手动起 record + 起 transcribe + 盯结束"的散装流程：
+  ```bash
+  python scripts/listen.py --room <B站直播间号> --user <使用者> [--wait-start]
+  ```
+  自动完成：抓直播主题建目录 → 内录(默认 5s 近流式小分块) → 秒级增量转写出字 →
+  周期检测下播 → 自动停录收尾 → 产出最终 `transcript.txt`。可 nohup 无人值守。
+- **产出落盘规范（单一可信源）**：一律落 `user/<使用者>/session/<开始时间>_<直播主题>/`，
+  下含 `chunks/`(音频)、`transcripts/transcript.txt`(实时追加的最终文字稿)、`segments.jsonl`、
+  `meta.json`、各日志。这些是**本地产出，不入版本库**(已在 .gitignore 排除)，见 user/README.md。
+- 手动起零件(record/transcribe)仅用于调试；正式"持续听课"走 listen.py。
+
+## 6. 修改守则
 
 - 不要破坏 mac 版现有脚本的路径引用；两版共用文件只在根 `scripts/` 维护。
 - Windows 版内录必须走系统 API（WASAPI loopback），**不得引入**虚拟声卡、ffmpeg、
