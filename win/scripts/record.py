@@ -168,12 +168,24 @@ def cmd_start(args):
     # 写 meta / pid
     with open(pidfile, "w", encoding="utf-8") as f:
         f.write(str(os.getpid()))
-    meta = {"started_at": datetime.datetime.now().isoformat(timespec="seconds"),
-            "engine": "wasapi_loopback",
-            "segment_seconds": segment,
-            "sample_rate": SAMPLE_RATE,
-            "channels": 1}
-    with open(os.path.join(session, "meta.json"), "w", encoding="utf-8") as f:
+    # meta.json 写合并而非覆盖：listen.py 可能已写好全量元数据
+    # （url/主播/主题/听课人/kind 等），这里只补缺省字段，避免整份覆盖丢失。
+    meta_path = os.path.join(session, "meta.json")
+    meta = {}
+    try:
+        if os.path.exists(meta_path):
+            with open(meta_path, encoding="utf-8") as f:
+                meta = json.load(f) or {}
+            if not isinstance(meta, dict):
+                meta = {}
+    except Exception:
+        meta = {}
+    meta.setdefault("started_at", datetime.datetime.now().isoformat(timespec="seconds"))
+    meta.setdefault("engine", "wasapi_loopback")
+    meta.setdefault("segment_seconds", segment)
+    meta.setdefault("sample_rate", SAMPLE_RATE)
+    meta.setdefault("channels", 1)
+    with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
     # 清除可能的旧 stop.flag

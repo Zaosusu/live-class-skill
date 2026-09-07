@@ -36,21 +36,22 @@ WorkBuddy / 其他 Coding Agent）。**请完整阅读并严格遵守**，违反
 
 ```
 live-class-skill/
-├── SKILL.md                 # mac 版主流程（历史保留，见 mac 说明）
+├── SKILL.md                 # mac 版主流程（macOS 用 ScreenCaptureKit，与 win/ 平级）
 ├── win/SKILL_win.md         # Windows 版主流程（本新增）
-├── mac/ 相关说明            # macOS 平台实现与 references
 ├── win/                     # Windows 平台实现
 │   ├── scripts/record.py    # WASAPI loopback 内录（零第三方）
 │   ├── scripts/_wasapi.py   # 内录引擎（纯 ctypes，系统 API）
 │   ├── scripts/setup.py     # Windows 环境检查
 │   └── references/
-├── scripts/                 # 通用层（两版共用）
+├── scripts/                 # 通用层（两版共用）+ mac 收音实现
 │   ├── common.py            # 模型/引擎定位
-│   ├── cuda_rt.py           # CUDA 运行库只读探测/注入（GPU 加速）
+│   ├── cuda_rt.py           # CUDA 运行库只读探测/注入（GPU 加速，Windows 用）
 │   ├── accel.py             # 加速档位决策（GPU优先/CPU兜底）
 │   ├── transcribe.py        # 转写（sherpa-onnx，GPU优先/CPU兜底）
 │   ├── listen.py            # 持续听课编排（认任意直播URL/抓数据或降级/近流式/自动收尾）
-│   └── ...                  # (mac 遗留脚本，勿删)
+│   ├── capture.swift        # mac 收音：ScreenCaptureKit 系统声音捕获
+│   ├── record.py            # mac 收音启停入口（check/start/stop，exec 为 capture）
+│   └── setup.sh             # mac 环境检查/一键就绪
 ├── user/                    # 听课产出根（本地产出，不入库），见 user/README.md
 └── AGENTS.md
 ```
@@ -95,6 +96,8 @@ live-class-skill/
   无状态接口 → 用「连续静音超时」自动收尾（--silent-timeout，默认 3 分钟；内录静音不落分块，
   故以"长时间无新分块"判结束），可叠加 --max-minutes 定时兜底或 Ctrl-C。
 - 手动起零件(record/transcribe)仅用于调试；正式"持续听课"走 listen.py。
+- **平台落点**：mac 收音实现（capture.swift / record.py / setup.sh）与 mac 主手册
+  （根 SKILL.md）在仓库根；Windows 的全部在 `win/`。
 
 ## 6. 修改守则
 

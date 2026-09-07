@@ -378,8 +378,25 @@ struct CaptureTool {
             exit(1)
         }
         try? String(getpid()).write(to: pidFile, atomically: true, encoding: .utf8)
-        try? "{\"started_at\": \"\(Date())\", \"engine\": \"screencapturekit\"}\n"
-            .write(to: dir.appendingPathComponent("meta.json"), atomically: true, encoding: .utf8)
+        // meta.json 写合并而非覆盖：listen.py / record.py 可能已写好全量元数据
+        // （url/主播/主题/听课人/kind 等），这里只补缺省字段，避免整份覆盖丢失。
+        do {
+            let metaURL = dir.appendingPathComponent("meta.json")
+            var meta: [String: Any] = [:]
+            if let old = try? Data(contentsOf: metaURL),
+               let obj = try? JSONSerialization.jsonObject(with: old) as? [String: Any] {
+                meta = obj
+            }
+            if meta["started_at"] == nil {
+                meta["started_at"] = ISO8601DateFormatter().string(from: Date())
+            }
+            if meta["engine"] == nil { meta["engine"] = "screencapturekit" }
+            let out = try JSONSerialization.data(withJSONObject: meta,
+                                                 options: [.prettyPrinted, .sortedKeys])
+            try out.write(to: metaURL)
+        } catch {
+            log("meta.json 写入失败（不影响捕获）：\(error.localizedDescription)")
+        }
 
         log("开始捕获系统声音（ScreenCaptureKit 系统自带，16kHz 单声道）→ \(dir.path)/chunks/")
         log("按 Ctrl-C 或 capture --stop --session \(session) 结束；本进程常驻。")

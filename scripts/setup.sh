@@ -24,7 +24,7 @@ miss() { printf "  \033[31m[缺失]\033[0m %s\n" "$1"; }
 info() { printf "  \033[36m[指引]\033[0m %s\n" "$1"; }
 step() { printf "\n\033[1m== %s ==\033[0m\n" "$1"; }
 
-step "1/3 转写引擎 sherpa-onnx（Python，纯本地 ASR）"
+step "1/4 转写引擎 sherpa-onnx（Python，纯本地 ASR）"
 PY=""
 if [ -x "$VENV_PY" ] && "$VENV_PY" -c "import sherpa_onnx" >/dev/null 2>&1; then
   PY="$VENV_PY"
@@ -55,7 +55,7 @@ else
   fi
 fi
 
-step "2/3 ASR 模型（中文 zipformer-ctc int8，约 370MB）"
+step "2/4 ASR 模型（中文 zipformer-ctc int8，约 370MB）"
 if [ -f "$MODELS_DIR/$MODEL_SUBDIR/model.int8.onnx" ] && [ -f "$MODELS_DIR/$MODEL_SUBDIR/tokens.txt" ]; then
   ok "模型已就绪: $MODELS_DIR/$MODEL_SUBDIR"
 else
@@ -74,7 +74,7 @@ else
   fi
 fi
 
-step "3/3 系统声音捕获工具 capture（ScreenCaptureKit，macOS 14+）"
+step "3/4 系统声音捕获工具 capture（ScreenCaptureKit，macOS 14+）"
 if [ -x "$CAPTURE_BIN" ]; then
   ok "capture 已编译: $CAPTURE_BIN"
   # 权限探测
@@ -101,6 +101,20 @@ else
     miss "swiftc 不可用，无法编译捕获工具"
     info "安装 Xcode CommandLine Tools：xcode-select --install"
   fi
+fi
+
+echo
+step "4/4 转写加速档位判定（GPU优先 / CPU兜底，自动决策）"
+RUN_PY="${PY:-$(command -v python3 2>/dev/null)}"
+if [ -n "$RUN_PY" ] && [ -f "$SKILL_DIR/scripts/accel.py" ]; then
+  "$RUN_PY" "$SKILL_DIR/scripts/accel.py" 2>/dev/null | sed 's/^/  /' \
+    || echo "  (档位判定失败，默认 CPU 兜底，不影响使用)"
+else
+  echo "  (无可用 python，装好引擎后自动按档位运行；CPU 兜底始终可用)"
+fi
+if [ -n "$PY" ]; then
+  echo
+  info "可用命令（把 PY 指到上面的 python）： PY=\"$PY\""
 fi
 
 echo
