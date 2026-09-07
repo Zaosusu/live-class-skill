@@ -23,21 +23,82 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common  # noqa: E402
+# GPU 加速辅助（跨平台安全：Windows 上有 CUDA 就注入，否则无害）：
+#   cuda_rt   —— 定位/注入 CUDA 运行库目录
+#   accel     —— 加速档位决策（gpu/cpu）
+import cuda_rt  # noqa: E402
+import accel  # noqa: E402
+
+
+# 转写执行策略：GPU优先(CUDA) → 兜底CPU → 可选第三方API（accel.detect 自动决策）。
+# 可用 LCC_ASR_PROVIDER 环境变量手动指定，例如 cuda / cpu / directml / coreml。
 
 
 class SherpaEngine:
     def __init__(self):
+        # GPU 优先 / CPU 兜底：先注入 CUDA 运行库（Windows 上探测到就用，未探测到无害），
+        # 再把 provider 顺序定成 cuda→cpu。GPU 不可用自动降级，绝不中断。
+        rt = cuda_rt.find_cuda_rt_dir()
+        if rt:
+            cuda_rt.inject_cuda_rt(rt)
         import sherpa_onnx
         mf = common.model_files()
         if mf is None:
             sys.exit("[transcribe] 未找到 ASR 模型。请先运行 setup.sh 下载模型：\n"
                      f"  目录: {common.models_dir()}\n"
                      f"  模型: {common.MODEL_SUBDIR}（约 400MB）")
-        self.recognizer = sherpa_onnx.OfflineRecognizer.from_zipformer_ctc(
-            model=mf["model"], tokens=mf["tokens"],
-            num_threads=4, sample_rate=16000,
-            decoding_method="greedy_search")
+        # provider 优先级：LCC_ASR_PROVIDER(手动) > 本机加速档位决定 > cuda > cpu
+        forced = os.environ.get("LCC_ASR_PROVIDER", "").strip().lower()
+        if forced:
+            order = [forced]
+        elif accel.detect()["accel"] == "gpu":
+            order = ["cuda", "cpu"]
+        else:
+            order = ["cpu"]  # 无 CUDA 运行库时直接 CPU，省去一次注定失败的 cuda 尝试
+        self.recognizer = None
+        self.provider = None
+        self._init_with_fallback(sherpa_onnx, mf, order)
         self.sample_rate = 16000
+
+    def warmup(self):
+        """GPU 冷启动预热：首次真分块常需 ~40s 编译 cuDNN kernel，这里提前做一次。
+        用一小段静音波形跑一次 decode，规避真实会话首个分块的卡顿。非 GPU 档位跳过。"""
+        if self.provider != "cuda":
+            return
+        try:
+            import numpy as np
+            audio = np.zeros(1600, dtype="float32")  # 0.1s 静音，足够触发引擎就绪
+            s = self.recognizer.create_stream()
+            s.accept_waveform(16000, audio)
+            self.recognizer.decode_stream(s)
+            sys.stderr.write("[transcribe] GPU 预热完成（首个分块将无需冷启动）\n")
+        except Exception as e:
+            sys.stderr.write(f"[transcribe] GPU 预热失败（不影响使用）：{e}\n")
+
+    def _init_with_fallback(self, sherpa_onnx, mf, order):
+        """按序尝试 provider，失败自动降级，绝不因 GPU 缺失而中断。"""
+        tried = []
+        for prov in order:
+            if not prov:
+                continue
+            tried.append(prov)
+            try:
+                self.recognizer = sherpa_onnx.OfflineRecognizer.from_zipformer_ctc(
+                    model=mf["model"], tokens=mf["tokens"],
+                    num_threads=4, sample_rate=16000,
+                    decoding_method="greedy_search", provider=prov)
+                self.provider = prov
+                import sys as _s
+                tag = "GPU" if prov == "cuda" else "CPU"
+                _s.stderr.write(f"[transcribe] ASR 执行器: {prov}（{tag}）\n")
+                return
+            except Exception as e:
+                import sys as _s
+                _s.stderr.write(f"[transcribe] provider={prov} 不可用({e})，尝试下一档\n")
+        sys.exit(f"[transcribe] 无法初始化 ASR（已试 {tried}）")
+
+    def current_provider(self):
+        return self.provider
 
     def transcribe(self, wav_path):
         import soundfile as sf
@@ -133,8 +194,12 @@ def main():
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--session", required=True, help="会话目录")
     p.add_argument("--watch", action="store_true", help="轮询新模式")
+    p.add_argument("--no-warmup", action="store_true",
+                   help="跳过 GPU 冷启动预热（默认 GPU 档位会预热）")
     args = p.parse_args()
     engine = SherpaEngine()
+    if not args.no_warmup:
+        engine.warmup()  # GPU 档位才实际执行
     run_session(args.session, engine, args.watch)
 
 

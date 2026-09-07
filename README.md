@@ -49,6 +49,10 @@
 
 > 说明：转写模型与 Python 包是**首次使用的一次性下载/安装**，均为开源免费组件；之后完全离线。
 
+> **加速档位（Windows）**：转写引擎自动 **GPU优先 / CPU兜底**——检测到 NVIDIA GPU 且系统里有可复用的
+> CUDA 运行库（系统 CUDA Toolkit 或任意 PyTorch 自带库）就用 GPU，否则自动用 CPU，任何机器都能跑、不用手动配。
+> macOS 默认走 CPU。
+
 ## 安装
 
 ```bash

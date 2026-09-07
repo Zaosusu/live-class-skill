@@ -46,7 +46,9 @@ live-class-skill/
 │   └── references/
 ├── scripts/                 # 通用层（两版共用）
 │   ├── common.py            # 模型/引擎定位
-│   ├── transcribe.py        # 转写（sherpa-onnx）
+│   ├── cuda_rt.py           # CUDA 运行库只读探测/注入（GPU 加速）
+│   ├── accel.py             # 加速档位决策（GPU优先/CPU兜底）
+│   ├── transcribe.py        # 转写（sherpa-onnx，GPU优先/CPU兜底）
 │   └── ...                  # (mac 遗留脚本，勿删)
 └── AGENTS.md
 ```
@@ -57,7 +59,21 @@ live-class-skill/
   `common.py`（模型定位）与 `transcribe.py`（转写）统一管理，mac/win 共用。
 - 改模型/换引擎**只改通用层一处**，两个平台都生效，不要在各平台目录重复维护一套。
 
-## 4. 修改守则
+## 4. 转写加速档位：GPU优先 / CPU兜底 / 可选 API
+
+- 转写引擎自动决策在**通用层**统一实现，`accel.py` + `cuda_rt.py` 负责探测与决策，mac/win 共用。
+  - `scripts/cuda_rt.py`：只读探测本机是否有**可复用的 CUDA 运行库**（系统 Toolkit 或 PyTorch 自带），
+    并提供运行时注入（跨平台安全，mac/linux 一律返回 None、零副作用）。
+  - `scripts/accel.py`：档位决策（`gpu` / `cpu`）+ 打印给用户看的说明。
+  - `scripts/transcribe.py`：按档位选 provider（GPU 优先、自动降级 CPU），GPU 档会做启动预热。
+- **决策铁律（给 Agent 与 setup）**：
+  1. 能上 GPU 就上 GPU，**不需要问用户**；
+  2. 无 NVIDIA GPU / 有 GPU 但缺运行库 → **默认自动降级 CPU**（任何机器开箱即用、绝不卡住）；
+  3. 是否向用户"确认降级"取决于用户是否在意：**用户不懂/不关心 → 自动用 CPU，别再追问**；
+  4. 可顺带告知"可选配第三方 ASR API"，但**用户不配/不懂 → 继续用默认档位**，绝不强制。
+- 改这里务必保持 CPU 兜底路径可用——它是"开箱即用"的最后防线。
+
+## 5. 修改守则
 
 - 不要破坏 mac 版现有脚本的路径引用；两版共用文件只在根 `scripts/` 维护。
 - Windows 版内录必须走系统 API（WASAPI loopback），**不得引入**虚拟声卡、ffmpeg、

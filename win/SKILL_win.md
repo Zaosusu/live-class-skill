@@ -56,8 +56,14 @@ agent_created: true
 ```bat
 python <skill>\win\scripts\setup.py
 ```
+- setup 会**自动探测加速档位**并打印判定：
+  - 检测到 **NVIDIA GPU + 可复用 CUDA 运行库** → 档位 **GPU**（sherpa CUDA 版）；
+  - 否则 → 档位 **CPU**（零 CUDA 依赖，任何机器都能用）；
+  - 并提示可选配第三方 ASR API（不配则用上面档位）。
+  > 给用户的决策口径：**能上 GPU 就上 GPU，不问；没有 GPU / 用户不懂 / 不关心 → 直接用 CPU，
+  > 别再追问**。CPU 档对本模型也快到接近实时，只是没有 GPU 档快。
 - 三段都 `[OK]` → 继续。有 `[缺失]` → 按指引修复，或 `python <skill>\win\scripts\setup.py --fix`
-  （自动建 `.venv` 装 sherpa-onnx、下载模型，需联网几分钟）。
+  （自动建 `.venv`，按档位装 sherpa（GPU 机器装 CUDA 版、否则 CPU 版）、下载模型，需联网几分钟）。
 - 常见第一段 `[缺失]`：本机没有"启用的默认音频输出设备"——接好扬声器/耳机/USB 声卡即可；
   只要系统能正常出声，内录就绪。
 
@@ -150,6 +156,7 @@ python <skill>\win\scripts\record.py stop --session %SESSION%   :: 1. 通知内�
 | record 启动成功但全是静音/无文字 | 系统音量 0、直播没在播、标签页静音：请用户调高音量/确认播放 |
 | 转写全为空 | 直播页静音/没点播放/需登录：请用户确认页面在播放后再看日志 |
 | 声音忽断 | 网络卡顿属正常，恢复自动续录；持续静音按第 6 步处理 |
+| setup 显示走 CPU 而非 GPU | 机器无 NVIDIA GPU，或有 GPU 但未找到 CUDA 运行库（PyTorch 自带 / 系统 Toolkit 均可被识别）。CPU 档也能用，只是略慢；装了 CUDA 后重跑 setup.py --fix 即可切 GPU |
 | 磁盘占用 | 20s×16k 单声道约 115MB/小时，可接受 |
 | 静音段无分块 | 正常设计：有声才落盘，转写只处理实际内容 |
 
@@ -163,7 +170,9 @@ python <skill>\win\scripts\record.py stop --session %SESSION%   :: 1. 通知内�
 ## 资源说明
 - `win/scripts/_wasapi.py`：WASAPI loopback 内录引擎（纯 ctypes，零第三方）；
 - `win/scripts/record.py`：内录启停入口（`check` / `start` / `stop`）；
-- `win/scripts/setup.py`：Windows 环境检查/一键就绪（`--fix` 建 venv 装 sherpa、下载模型）；
-- 根 `scripts/transcribe.py`：增量转写器（sherpa-onnx，`--watch` 轮询），mac/win 共用；
+- `win/scripts/setup.py`：Windows 环境检查/一键就绪（`--fix` 建 venv，按加速档位装 sherpa、下载模型）；
+- 根 `scripts/transcribe.py`：增量转写器（sherpa-onnx，`--watch` 轮询），mac/win 共用；**GPU优先/CPU兜底**；
+- 根 `scripts/accel.py`：加速档位决策（探测 NVIDIA GPU 与 CUDA 运行库）；
+- 根 `scripts/cuda_rt.py`：CUDA 运行库只读定位与注入（Windows 上复用系统/PyTorch 现成库，不装 CUDA）；
 - 根 `scripts/common.py`：模型/引擎定位（mac/win 共用）；
 - `references/windows-audio-setup.md`：内录原理与零第三方说明、常见问题。

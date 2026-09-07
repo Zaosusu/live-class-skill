@@ -168,7 +168,8 @@ touch "$SESSION/done.flag"                       # 1. 通知转写器收尾
 ## 资源说明
 - `scripts/capture.swift`：系统声音捕获工具（ScreenCaptureKit，编译产物 `scripts/bin/capture`）；
 - `scripts/record.py`：捕获启停入口（`check` / `start` / `stop`）；
-- `scripts/transcribe.py`：增量转写器（sherpa-onnx，`--watch` 轮询模式）；
+- `scripts/transcribe.py`：增量转写器（sherpa-onnx，`--watch` 轮询模式）；**GPU优先/CPU兜底**自动决策
+  （mac 上通常无 CUDA → 自动用 CPU，行为与之前一致，无需任何改动）；
 - `scripts/common.py`：环境探测（python/capture/模型），其他脚本共用；
 - `scripts/setup.sh`：一键环境检查/修复（`--fix` 自动编译 capture、下载模型）；
 - `references/audio-setup.md`：「屏幕录制」权限授权与常见问题（零安装说明）；
