@@ -1,0 +1,13 @@
+# 编译产物（用户自行编译）
+scripts/bin/capture
+
+# Python 虚拟环境与缓存
+scripts/.venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# 会话录音残留（本地测试产物，勿入库）
+*.log
