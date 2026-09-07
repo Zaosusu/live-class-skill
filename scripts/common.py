@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""live-class-copilot 共享环境探测库（可移植版，不绑定任何特定宿主环境）。
+"""live-class-skill 共享环境探测库（可移植版，不绑定任何特定宿主环境）。
 
 技能内所有脚本统一从这里定位：
   - Python 解释器（须装有 sherpa_onnx）
   - 系统声音捕获工具 scripts/bin/capture（ScreenCaptureKit，零安装）
-  - ASR 模型目录（默认 ~/.cache/live-class-copilot/models，可 LCC_MODELS_DIR 覆盖）
+  - ASR 模型目录（默认 ~/.cache/live-class-skill/models，可 LCC_MODELS_DIR 覆盖）
 
 可通过环境变量覆盖默认探测：
   LCC_PYTHON / LCC_MODELS_DIR
@@ -21,7 +21,7 @@ MODEL_SUBDIR = "sherpa-onnx-zipformer-ctc-zh-int8-2025-07-03"
 MODEL_URL = ("https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/"
              "sherpa-onnx-zipformer-ctc-zh-int8-2025-07-03.tar.bz2")
 
-DEFAULT_MODELS_DIR = os.path.join(HOME, ".cache", "live-class-copilot", "models")
+DEFAULT_MODELS_DIR = os.path.join(HOME, ".cache", "live-class-skill", "models")
 # 优先：技能自带虚拟环境 scripts/.venv（setup.sh 会创建）
 VENV_PY = os.path.join(SKILL_DIR, "scripts", ".venv", "bin", "python")
 DEFAULT_CAPTURE_BIN = os.path.join(SKILL_DIR, "scripts", "bin", "capture")

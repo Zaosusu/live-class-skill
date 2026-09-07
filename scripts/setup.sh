@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup.sh — 一键检查 live-class-copilot 运行环境，缺什么报什么、怎么修。
+# setup.sh — 一键检查 live-class-skill 运行环境，缺什么报什么、怎么修。
 # 零安装方案：不需要虚拟声卡/不需要 ffmpeg/不需要切换输出设备，
 # 系统声音直接由系统自带 ScreenCaptureKit 捕获（macOS 14+，需一次性"屏幕录制"授权）。
 #
@@ -10,7 +10,7 @@ cd "$(dirname "$0")"
 
 HOME_DIR="$HOME"
 SKILL_DIR="$(cd .. && pwd)"
-MODELS_DIR="${LCC_MODELS_DIR:-$HOME_DIR/.cache/live-class-copilot/models}"
+MODELS_DIR="${LCC_MODELS_DIR:-$HOME_DIR/.cache/live-class-skill/models}"
 MODEL_SUBDIR="sherpa-onnx-zipformer-ctc-zh-int8-2025-07-03"
 MODEL_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/${MODEL_SUBDIR}.tar.bz2"
 VENV_DIR="$SKILL_DIR/scripts/.venv"

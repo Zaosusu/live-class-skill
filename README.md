@@ -1,4 +1,4 @@
-# 听课 Skill（live-class-copilot）
+# 听课 Skill（live-class-skill）
 
 直播课 / 线上课程 / 会议「代听」助手 —— **打开网页 → 自动录制系统声音 → 本地转写 → 结束后生成结构化笔记**。
 适用于 B站 / 抖音 / 小红书 / 视频号 / 腾讯会议等任何能在浏览器出声的直播与线上课。
@@ -37,15 +37,15 @@
 | Xcode Command Line Tools | 编译 capture 工具（swiftc） | `xcode-select --install` |
 | Python 3.9+ | 转写引擎 | `setup.sh --fix` 会自动建 venv 并安装 |
 | 屏幕录制权限 | 一次性隐私授权 | 系统设置 → 隐私与安全性 → 屏幕录制 |
-| 中文 ASR 模型 | sherpa zipformer-ctc int8，约 370MB | `setup.sh --fix` 自动下载到 `~/.cache/live-class-copilot/models/` |
+| 中文 ASR 模型 | sherpa zipformer-ctc int8，约 370MB | `setup.sh --fix` 自动下载到 `~/.cache/live-class-skill/models/` |
 
 > 说明：转写模型与 Python 包是**首次使用的一次性下载/安装**，均为开源免费组件；之后完全离线。
 
 ## 安装
 
 ```bash
-git clone https://github.com/Zaosusu/live-class-copilot.git
-cd live-class-copilot
+git clone https://github.com/Zaosusu/live-class-skill.git
+cd live-class-skill
 
 # 一键：建 Python venv + 装 sherpa-onnx + 下载中文模型 + 编译 capture 工具
 bash scripts/setup.sh --fix
