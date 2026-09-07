@@ -21,7 +21,8 @@
      --room 也可直接给 B站房间号(数字)作简写。给链接即可，脚本自己判断能否抓数据：
    - 能抓(B站等)：主播_主题_时间命名，自动轮询开播/下播
    - 抓不到(其余平台)：目录=纯本地时间，直接开始内录系统声(你需自行打开该页出声)，
-     无法自动判下播，靠 --max-minutes 定时或 Ctrl-C 收尾
+     用「连续静音 --silent-timeout 分钟」自动判结束(默认3分钟，主播下播/关页→系统无声
+     →超时收尾)，可再叠加 --max-minutes 定时兜底，或 Ctrl-C 手动收尾
 
 用法：
     python scripts/listen.py --url <任意直播URL> --user <听课人> [选项]
@@ -40,7 +41,8 @@
   --down N              连续 N 次检测到下播即结束(默认 5，约 2.5 分钟；仅 B站)
   --wait-start          未开播时轮询等待，而非直接退出(仅 B站)
   --max-wait-min M      等待开播最久 M 分钟(配合 --wait-start，默认无限；仅 B站)
-  --max-minutes M       最多录 M 分钟后自动收尾(兜底；盲录平台请务必设置)
+  --max-minutes M       最多录 M 分钟后自动收尾(兜底；盲录平台可叠加)
+  --silent-timeout M    盲录平台连续静音 M 分钟自动收尾(默认3；0=关闭；仅盲录生效)
   --plan-only           只探测并打印将建的会话目录，不实际录音/转写
 说明：转写引擎自动探测装有 sherpa 的 venv python(GPU优先/CPU兜底已内置)。
 """
@@ -153,6 +155,25 @@ def build_session_dir(t):
     return os.path.join(SKILL, "user", "session", session_name(t))
 
 
+def latest_chunk_mtime(session):
+    """返回 session/chunks/ 里最新 .wav 分块的修改时间；无分块返回 0。
+
+    内录只在「有声音播放」时落盘分块（静音不落盘），故分块 mtime 可当作
+    「最近一次听到声音」的时间戳，供盲录平台做静音超时自动收尾。
+    """
+    d = os.path.join(session, "chunks")
+    if not os.path.isdir(d):
+        return 0.0
+    newest = 0.0
+    for fn in os.listdir(d):
+        if fn.endswith(".wav"):
+            try:
+                newest = max(newest, os.path.getmtime(os.path.join(d, fn)))
+            except OSError:
+                pass
+    return newest
+
+
 # ---------------------------------------------------------------- 引擎/子进程
 def pick_python():
     """返回能 import sherpa_onnx 的解释器路径，找不到返回 None。"""
@@ -213,6 +234,8 @@ def main():
     ap.add_argument("--wait-start", action="store_true", help="未开播则轮询等待(仅B站)")
     ap.add_argument("--max-wait-min", type=int, default=0, help="等开播最久分钟(0=不限，仅B站)")
     ap.add_argument("--max-minutes", type=int, default=0, help="最多录多少分钟后收尾(0=不限；盲录平台务必设置)")
+    ap.add_argument("--silent-timeout", type=int, default=3,
+                    help="盲录平台连续静音多少分钟后自动收尾(分钟，默认3；0=关闭)")
     ap.add_argument("--plan-only", action="store_true", help="只探测并打印目录，不录音")
     a = ap.parse_args()
 
@@ -244,9 +267,11 @@ def main():
         owner = title = ""
         print("[listen] 该平台无公开接口(无法抓主播/主题/直播状态)。")
         print("[listen] 将按 <纯本地时间> 命名并开始内录『系统正在播放的声音』；")
-        print("[listen] 请自行打开该直播页出声；无法自动判下播，"
-              f"用 --max-minutes 定时或 Ctrl-C 收尾"
-              + ("(当前未设 --max-minutes，建议补上)。" if a.max_minutes <= 0 else "。"))
+        print("[listen] 请自行打开该直播页出声。结束判定："
+              f"连续静音 {a.silent_timeout} 分钟自动收尾"
+              + (f"，另叠加 --max-minutes={a.max_minutes} 定时兜底" if a.max_minutes > 0
+                 else "，可再叠加 --max-minutes 定时兜底")
+              + "，或 Ctrl-C 手动收尾。")
 
     session = build_session_dir(t)
     print(f"[listen] 会话目录: {session}")
@@ -296,12 +321,16 @@ def main():
         print("[listen] 结束收尾：检测到下播(连续 {a.down} 次) 或 超时自动停；"
               " Ctrl-C 手动收尾。")
     else:
-        print("[listen] 结束收尾：达到 --max-minutes 自动停 或 Ctrl-C 手动收尾"
-              "（无接口平台无法自动判下播）。")
+        silent = f"，连续静音 {a.silent_timeout} 分钟自动停" if a.silent_timeout > 0 else ""
+        print("[listen] 结束收尾：达到 --max-minutes 自动停"
+              f"{silent} 或 Ctrl-C 手动收尾（盲录平台无法用接口判下播）。")
 
     t_start = time.time()
     down_count = 0
     restart = {"record": 0, "transcribe": 0}
+    # 盲录平台的静音超时收尾基准：启动时若已有分块(有声音)以其为基准，否则给 silent 分钟宽限出声
+    silent_on = (kind != "bilibili" and a.silent_timeout > 0)
+    last_audio = latest_chunk_mtime(session) or t_start
     try:
         while True:
             time.sleep(a.poll)
@@ -309,7 +338,7 @@ def main():
             if a.max_minutes > 0 and (time.time() - t_start) > a.max_minutes * 60:
                 print(f"[listen] 达到 --max-minutes={a.max_minutes}，收尾。")
                 break
-            # 2) 直播结束检测(仅 B站等有 live_status 接口的平台)
+            # 2) 结束检测：B站走 live_status 轮询；盲录平台走静音超时
             if kind == "bilibili":
                 st = live_status(t["room"])
                 if st == 0:
@@ -320,6 +349,14 @@ def main():
                         break
                 else:
                     down_count = 0
+            elif silent_on:
+                m = latest_chunk_mtime(session)
+                if m > last_audio:          # 有新声音分块，刷新基准
+                    last_audio = m
+                elif time.time() - last_audio > a.silent_timeout * 60:
+                    print(f"[listen] 连续 {a.silent_timeout} 分钟无声音"
+                          "(静音超时)，判定直播结束，收尾。")
+                    break
             # 3) 子进程看护：崩了就重启(增量幂等，不丢已落盘)
             for name in ("record", "transcribe"):
                 p = procs[name][0]

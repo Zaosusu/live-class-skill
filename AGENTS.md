@@ -91,8 +91,9 @@ live-class-skill/
   `--user` 听课人仅记入 meta.json 不进目录名。目录下含 `chunks/`(音频)、
   `transcripts/transcript.txt`(实时追加的最终文字稿)、`segments.jsonl`、
   `meta.json`、各日志。这些是**本地产出，不入版本库**(已在 .gitignore 排除)，见 user/README.md。
-- **两种收尾模式**：B站等有 live_status 接口 → 连续下播自动停；盲录平台抓不到状态 →
-  无法自动判下播，用 `--max-minutes` 定时或 Ctrl-C 收尾（盲录务必设 --max-minutes）。
+- **两种收尾模式**：B站等有 live_status 接口 → 连续下播自动停；盲录平台(抖音/小红书等)
+  无状态接口 → 用「连续静音超时」自动收尾（--silent-timeout，默认 3 分钟；内录静音不落分块，
+  故以"长时间无新分块"判结束），可叠加 --max-minutes 定时兜底或 Ctrl-C。
 - 手动起零件(record/transcribe)仅用于调试；正式"持续听课"走 listen.py。
 
 ## 6. 修改守则

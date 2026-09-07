@@ -85,7 +85,9 @@ python scripts/listen.py --room <B站房间号> --user <你的标识>
 # 没人值守跑一整场（未开播会等、下播自动收尾），后台：
 nohup python scripts/listen.py --url https://live.bilibili.com/1816490612 \
       --user me --wait-start > user/listen_me.log 2>&1 &
-# 盲录平台(抖音/小红书等)无法自动判下播，请务必加 --max-minutes 定时收尾
+# 盲录平台(抖音/小红书等)：连续静音默认 3 分钟自动收尾；可叠加 --max-minutes 兜底
+nohup python scripts/listen.py --url https://live.douyin.com/xxx --user me \
+      --silent-timeout 3 --max-minutes 120 > user/listen_dy.log 2>&1 &
 ```
 
 ### 命令行（不含总结）
