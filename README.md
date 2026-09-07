@@ -44,7 +44,7 @@
 ## 安装
 
 ```bash
-git clone <本仓库地址> live-class-copilot
+git clone https://github.com/Zaosusu/live-class-copilot.git
 cd live-class-copilot
 
 # 一键：建 Python venv + 装 sherpa-onnx + 下载中文模型 + 编译 capture 工具
