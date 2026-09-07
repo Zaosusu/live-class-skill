@@ -76,8 +76,12 @@ class ChunkWriter:
         self._samples = 0
 
     def _new_chunk(self):
-        name = "seg_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3] + ".wav"
-        self._path = os.path.join(self.chunks_dir, name)
+        # 写入中的分块用 .part 临时名，finalize 完整后再改名 .wav。
+        # 否则监听端（transcribe 按 *.wav 扫描 + 文件名去重）会读到只写了
+        # 头的半成品：要么误判静音跳过、要么只转写前半段丢数据。
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        self._name = f"seg_{ts}.wav"
+        self._path = os.path.join(self.chunks_dir, self._name + ".part")
         self._fh = open(self._path, "wb")
         self._samples = 0
         _write_wav_header(self._fh, 0)
@@ -112,7 +116,13 @@ class ChunkWriter:
         self._fh.write(struct.pack("<I", data_size))
         self._fh.close()
         self._fh = None
-        print(f"[record] 写出分块 {os.path.basename(self._path)} "
+        # .part -> .wav（只有完整落盘后才让监听端可见）
+        final = os.path.join(self.chunks_dir, self._name)
+        try:
+            os.replace(self._path, final)
+        except OSError:
+            pass
+        print(f"[record] 写出分块 {self._name} "
               f"({self._samples / SAMPLE_RATE:.1f}s)", flush=True)
 
     def close(self):

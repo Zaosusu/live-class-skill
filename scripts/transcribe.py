@@ -103,12 +103,18 @@ class SherpaEngine:
     def transcribe(self, wav_path):
         import soundfile as sf
         audio, sr = sf.read(wav_path, dtype="float32", always_2d=True)
+        n = int(audio.shape[0])
+        # 空/超短分块（采集进程正在写、只写了头的临时块）会让 onnxruntime
+        # CUDA 的 Conv 节点以 0 帧输入崩溃（Invalid input shape: {0,80}）。
+        # 这里直接当静音处理，不喂给引擎，避免把整个监听进程带崩。
+        if n < max(1, int(sr * 0.2)):  # < 0.2s
+            return {"text": "", "audio_seconds": round(n / sr, 1), "rt_seconds": 0.0}
         stream = self.recognizer.create_stream()
         stream.accept_waveform(sr, audio[:, 0])
         t0 = time.time()
         self.recognizer.decode_stream(stream)
         return {"text": stream.result.text.strip(),
-                "audio_seconds": round(len(audio) / sr, 1),
+                "audio_seconds": round(n / sr, 1),
                 "rt_seconds": round(time.time() - t0, 2)}
 
 
@@ -170,15 +176,20 @@ def run_session(session_dir, engine, watch):
         if todo:
             with open(jsonl, "a", encoding="utf-8") as jf:
                 for w in todo:
-                    rec = engine.transcribe(w)
+                    try:
+                        rec = engine.transcribe(w)
+                    except Exception as e:
+                        # 单块失败不拖垮整场监听：记为(失败)占位并跳过，杜绝下一轮重试同块
+                        sys.stderr.write(f"[transcribe] 分块失败跳过 {os.path.basename(w)}: {e}\n")
+                        rec = {"text": "", "error": str(e)[:200]}
                     rec["file"] = os.path.basename(w)
                     rec["ts"] = time.strftime("%H:%M:%S")
                     jf.write(json.dumps(rec, ensure_ascii=False) + "\n")
                     jf.flush()
-                    mark = "·" if rec["text"] else "(静音)"
+                    mark = "·" if rec.get("text") else "(静音)"
                     print(f"[transcribe] {rec['file']} "
-                          f"({rec['audio_seconds']}s/{rec['rt_seconds']}s) {mark} "
-                          f"{rec['text'][:40]}", flush=True)
+                          f"({rec.get('audio_seconds', '?')}s/{rec.get('rt_seconds', '?')}s) {mark} "
+                          f"{(rec.get('text') or '')[:40]}", flush=True)
             rebuild_transcript(session_dir, jsonl, txt_path)
         if not watch:
             break
