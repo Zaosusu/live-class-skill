@@ -318,7 +318,7 @@ def main():
     logs["record"] = procs["record"][1]; logs["transcribe"] = procs["transcribe"][1]
     print(f"[listen] 已启动 内录(pid {procs['record'][0].pid}) + 转写watch(pid {procs['transcribe'][0].pid})")
     if kind == "bilibili":
-        print("[listen] 结束收尾：检测到下播(连续 {a.down} 次) 或 超时自动停；"
+        print(f"[listen] 结束收尾：检测到下播(连续 {a.down} 次) 或 超时自动停；"
               " Ctrl-C 手动收尾。")
     else:
         silent = f"，连续静音 {a.silent_timeout} 分钟自动停" if a.silent_timeout > 0 else ""
