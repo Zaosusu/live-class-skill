@@ -152,6 +152,37 @@ python <skill>\win\scripts\record.py stop --session %SESSION%   :: 1. 通知内�
 - 口头汇报 3–5 句：讲了什么、几个关键点、文件存放位置；
 - 询问是否需要导出其他格式（用户要才做，不主动）。
 
+## 分享到微信群（可选）：一键生成长图
+
+用户说"想让群里直接看"时，把 `summary.md` 转成竖版长图 PNG，直接保存发微信群。
+Windows 上 Edge 是系统自带，通常无需额外安装即可渲染。
+
+> 这一步**只用本机 Edge/Chrome 二进制渲染本地 HTML 文件**（headless 整页截图），
+> **不访问、不驱动任何直播平台网页**，与「反浏览器自动化铁律」不冲突（详见仓库根 `AGENTS.md` 第 1 节）。
+
+### 1. 准备海报数据
+复制仓库根的通用模板并按需改内容：
+```bat
+copy scripts\poster_template.html <会话目录>\poster.html
+```
+只改顶部 `window.POSTER_DATA = __DATA__;` 里的数据对象；或写 JSON 直接套模板：
+```bat
+python scripts\make_poster.py --data <会话目录>\poster_data.json --out <会话目录>\分享长图.png
+```
+
+### 2. 渲染长图
+```bat
+python scripts\make_poster.py --html <会话目录>\poster.html --out <会话目录>\分享长图.png
+```
+- 自动探测 **Microsoft Edge**（通常已在 Windows 预装），失败再试 Chrome/Chromium；
+- 不下载 Chromium，不依赖 playwright / selenium；
+- 输出视网膜 2x 高清 PNG，Pillow 自动裁掉底部空白。
+
+### 3. 发群
+保存 `<会话目录>\分享长图.png` 后直接发到微信群即可。
+
+依赖：`pip install pillow`（仅裁白边用；渲染靠本机浏览器二进制）。
+
 ## 故障速查
 
 | 症状 | 原因与处理 |
@@ -178,6 +209,9 @@ python <skill>\win\scripts\record.py stop --session %SESSION%   :: 1. 通知内�
 - `win/scripts/setup.py`：Windows 环境检查/一键就绪（`--fix` 建 venv，按加速档位装 sherpa、下载模型）；
 - 根 `scripts/transcribe.py`：增量转写器（sherpa-onnx，`--watch` 轮询），mac/win 共用；**GPU优先/CPU兜底**；
 - 根 `scripts/accel.py`：加速档位决策（探测 NVIDIA GPU 与 CUDA 运行库）；
-- 根 `scripts/cuda_rt.py`：CUDA 运行库只读定位与注入（Windows 上复用系统/PyTorch 现成库，不装 CUDA）；
+- 根 `scripts/cuda_rt.py`：CUDA 运行库只读定位与注入（Windows 上复用系统/PyTorch 现成库，不装 CUDA）;
 - 根 `scripts/common.py`：模型/引擎定位（mac/win 共用）；
+- 根 `scripts/poster_template.html`：微信群分享长图模板，改顶部 `POSTER_DATA` 即可换内容；
+- 根 `scripts/make_poster.py`：本地浏览器二进制 headless 截图 → 高清长图 PNG（自动探测 Edge/Chrome，
+  不下载 Chromium，不依赖 playwright/selenium，详见仓库根 `AGENTS.md` 1.1 节例外）；
 - `references/windows-audio-setup.md`：内录原理与零第三方说明、常见问题。

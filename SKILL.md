@@ -158,6 +158,54 @@ PY="<setup.sh 显示出的 python 路径，默认 scripts/.venv/bin/python>"
 - 口头汇报 3–5 句：讲了什么、几个关键点、文件存放位置；
 - 询问是否需要导出飞书文档/其他格式（用户要才做，不主动）。
 
+## 分享到微信群（可选）：一键生成长图
+
+用户说"想让群里直接看"时，把 `summary.md` 转成一张竖版长图 PNG，保存后直接发微信群，零链接门槛。
+
+> 这一步**只用本机浏览器二进制渲染本地 HTML 文件**（headless 整页截图），
+> **不访问、不驱动任何直播平台网页**，与「反浏览器自动化铁律」不冲突（详见 `AGENTS.md` 第 1 节）。
+
+### 1. 准备海报数据
+复制模板并按需改内容：
+```bash
+cp scripts/poster_template.html <会话目录>/poster.html
+```
+只改 HTML 顶部 `window.POSTER_DATA = __DATA__;` 里的数据对象即可（header、blocks、footer），样式已内置。
+也可以写 JSON 直接套模板：
+```bash
+cat > <会话目录>/poster_data.json <<'EOF'
+{"header":{"eyebrow":"...","title":"...","subtitle":"...","meta":"..."},
+ "blocks":[{"type":"core","title":"核心心法","items":["..."]},
+           {"type":"cases","title":"真实案例","items":[{"name":"...","color":"#2b5cff","pain":"...","do":"...","result":"..."}]},
+           {"type":"qa","title":"Q&A","items":["..."]},
+           {"type":"conclusion","title":"关键结论","text":"..."}],
+ "footer":{"title":"...","sub":"..."}}
+EOF
+```
+
+### 2. 渲染长图
+```bash
+# 方案 A：已写好 HTML（从 poster_template.html 改数据）
+python scripts/make_poster.py --html <会话目录>/poster.html --out <会话目录>/分享长图.png
+
+# 方案 B：从 JSON 数据直接生成
+python scripts/make_poster.py --data <会话目录>/poster_data.json \
+        --out <会话目录>/分享长图.png
+
+# 若没自动探测到浏览器，可显式指定（通常不需要）
+python scripts/make_poster.py --html <会话目录>/poster.html \
+        --browser "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+        --out <会话目录>/分享长图.png
+```
+- 自动探测本机 **Edge / Chrome / Chromium**，用其 headless 模式截图本地 HTML；
+- **不下载 Chromium，不依赖 playwright / selenium**；
+- 输出为视网膜 2x 高清 PNG，Pillow 自动裁掉底部空白。
+
+### 3. 发群
+保存 `<会话目录>/分享长图.png` 后直接发到微信群即可。
+
+依赖：`pip install pillow`（仅裁白边用；渲染靠本机浏览器二进制）。
+
 ## 会话落盘规范（单一可信源）
 
 `listen.py` 一律把产出落 `<技能目录>/user/session/<名字>/`，一场一个目录，命名走降级链：
@@ -220,5 +268,8 @@ touch "$SESSION/done.flag"                # 通知转写器收尾
   （mac 通常无 CUDA → 自动用 CPU，行为与之前一致，无需任何改动）；
 - `scripts/common.py`：环境探测（python/capture/模型），其他脚本共用；
 - `scripts/setup.sh`：一键环境检查/修复（`--fix` 自动建 venv、编译 capture、下载模型）；
+- `scripts/poster_template.html`：微信群分享长图模板，改顶部 `POSTER_DATA` 数据即可换内容；
+- `scripts/make_poster.py`：本地浏览器二进制 headless 截图 → 高清长图 PNG（自动探测 Edge/Chrome，
+  不下载 Chromium，不依赖 playwright/selenium，详见 `AGENTS.md` carve-out）；
 - `references/audio-setup.md`：「屏幕录制」权限授权与常见问题（零安装说明）；
 - `references/platforms.md`：各平台注意事项与结束判定。

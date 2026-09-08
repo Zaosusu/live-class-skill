@@ -117,6 +117,22 @@ touch "$SESSION/done.flag"          # 通知转写器收尾
 cat "$SESSION/transcripts/transcript.txt"    # 逐字稿
 ```
 
+### 分享到微信群（长图）
+
+把总结变成一张可直接发群的竖版长图，群里点开就看完，无需点击链接：
+
+```bash
+# 从模板改数据生成 HTML（或直接用 JSON 数据套模板）
+python scripts/make_poster.py --html <会话目录>/poster.html --out <会话目录>/分享长图.png
+
+# 用 JSON 直接生成
+python scripts/make_poster.py --data <会话目录>/poster_data.json --out <会话目录>/分享长图.png
+```
+
+- 自动探测本机 Edge / Chrome / Chromium，**不下载 Chromium**；
+- 渲染的是**本地 HTML 文件**，不驱动任何直播平台网页（与「零浏览器自动化」铁律一致，详见 `AGENTS.md`）；
+- 高清 2x 输出，Pillow 自动裁白边。
+
 ### 作为 AI Agent 技能（推荐）
 
 本仓库同时是一个 **Agent Skill 包**（SKILL.md 规范，Claude Code / Cursor / Codex /
@@ -141,6 +157,8 @@ Agent 会按 [`SKILL.md`](SKILL.md) 的 10 步流程自动完成：开直播页 
     ├── record.py           # 捕获启停入口（check / start / stop）
     ├── transcribe.py       # 增量本地转写（sherpa-onnx，--watch 轮询）
     ├── listen.py           # 持续听课编排（推荐入口：近流式实时出字 + 自动收尾）
+    ├── make_poster.py      # 本地浏览器 headless 截图 → 微信群分享长图 PNG
+    ├── poster_template.html# 长图模板，改顶部 POSTER_DATA 即可换内容
     ├── common.py           # 环境探测（可移植，支持 LCC_PYTHON / LCC_MODELS_DIR 覆盖）
     └── setup.sh            # 一键环境检查/修复
 ```

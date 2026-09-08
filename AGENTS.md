@@ -28,7 +28,24 @@ WorkBuddy / 其他 Coding Agent）。**请完整阅读并严格遵守**，违反
 - ✅ Agent 负责的部分只有：启动/管理"系统声音内录"进程、跑本地离线转写、监控增量、
   结束后生成总结。全程不碰浏览器进程。
 
-> 触发词自查：若本仓库任何脚本/流程/文档中出现
+### 1.1 明确例外：本地海报渲染不是平台浏览器自动化
+
+本技能含一个可选的「把总结导出为微信群长图」工具：`scripts/make_poster.py` + `scripts/poster_template.html`。
+该工具仅做一件事：调用**本机已安装的浏览器二进制**（Edge/Chrome/Chromium），用其命令行对**本地生成的 HTML 文件**执行整页截图，再由 Pillow 裁白边。
+**这不属于第 1 节禁止的浏览器自动化**，因为：
+
+- 它只处理本地 HTML 文件（`file://`），**不请求、不访问、不驱动任何直播平台网页**；
+- 它使用浏览器本身的 `--headless --screenshot` 命令行能力，不是通过 playwright/selenium/webdriver/CDP 远程控制浏览器；
+- 它不会点击、填写、滚动、读取 DOM、抓取直播流或模拟用户。
+
+因此，以下情况**明确允许，不触发“触发词自查”违规**：
+
+- `scripts/make_poster.py` 中出现 `--headless`、`--screenshot` 等浏览器命令行参数；
+- 文档中出现对“本地 HTML 文件 headless 截图”的描述，且上下文明确为 `make_poster.py` 的海报渲染。
+
+**严禁**把同样手段用于打开/操作直播平台网页；任何驱动浏览器访问 `live.bilibili.com`、`live.douyin.com` 等平台的 headless 行为仍属违规。
+
+> 触发词自查（除 1.1 明确例外）：若本仓库任何脚本/流程/文档中出现
 > `selenium` `playwright` `puppeteer` `webdriver` `cdp` `headless` `自动打开` `模拟点击`
 > `注入脚本` `读取页面` 等，应视为违规，需移除/改正后再继续。
 

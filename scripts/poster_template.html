@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #eef0f4;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+    color: #1f2329;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { width: 750px; margin: 0 auto; background: #fff; padding-bottom: 8px; }
+  /* header */
+  .header { background: linear-gradient(135deg, #2b5cff 0%, #7a3cff 100%); padding: 58px 56px 50px; color: #fff; }
+  .eyebrow { font-size: 26px; letter-spacing: 2px; color: #cfd8ff; font-weight: 600; }
+  .title { font-size: 68px; font-weight: 800; line-height: 1.15; margin-top: 18px; letter-spacing: 1px; }
+  .subtitle { font-size: 34px; font-weight: 600; color: #e8ecff; margin-top: 18px; }
+  .meta { font-size: 24px; color: #c3ccff; margin-top: 26px; line-height: 1.5; }
+  /* sections */
+  .section { padding: 46px 56px 6px; }
+  .sec-head { display: flex; align-items: center; margin-bottom: 26px; }
+  .sec-num { width: 44px; height: 44px; border-radius: 12px; background: #2b5cff; color: #fff; font-size: 26px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-right: 18px; flex: 0 0 auto; }
+  .sec-title { font-size: 38px; font-weight: 800; color: #1f2329; }
+  /* card */
+  .card { background: #fff; border: 1px solid #eaecef; border-radius: 18px; padding: 30px 32px; margin-bottom: 22px; box-shadow: 0 6px 18px rgba(31,35,41,0.05); }
+  .card.blue { background: #f7f9ff; border-color: #dbe3ff; }
+  .hl-card { background: linear-gradient(135deg, #2b5cff 0%, #7a3cff 100%); border: none; color: #fff; border-radius: 20px; padding: 38px 36px; }
+  .hl-card .q { font-size: 34px; font-weight: 700; line-height: 1.6; }
+  /* core list */
+  .core-item { display: flex; align-items: flex-start; padding: 14px 0; border-bottom: 1px dashed #eef0f3; font-size: 28px; line-height: 1.55; }
+  .core-item:last-child { border-bottom: none; }
+  .core-item .n { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; background: #2b5cff; color: #fff; font-size: 22px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-right: 16px; margin-top: 2px; }
+  /* case card */
+  .case { border-left: 8px solid #2b5cff; }
+  .case .c-name { font-size: 31px; font-weight: 800; color: #2b5cff; margin-bottom: 14px; }
+  .case .row { display: flex; margin: 8px 0; font-size: 25px; line-height: 1.5; }
+  .case .row .k { flex: 0 0 auto; font-weight: 700; color: #6b7280; width: 58px; margin-right: 10px; }
+  .case .row .v { color: #2b2f36; }
+  .case .row .v.res { color: #1a7f37; font-weight: 600; }
+  .case .row .k.do { color: #2b5cff; }
+  /* qa */
+  .qa-item { font-size: 26px; line-height: 1.6; padding: 12px 0; display: flex; }
+  .qa-item .dot { color: #2b5cff; font-weight: 800; margin-right: 12px; }
+  /* footer */
+  .footer { padding: 40px 56px 50px; color: #9aa1ac; font-size: 23px; line-height: 1.6; }
+  .footer .f1 { font-weight: 600; color: #6b7280; }
+</style>
+</head>
+<body>
+<div class="page" id="page"></div>
+<script>
+/* 只改这个数据对象即可换内容，样式无需动。
+   区块类型：core(心法)/cases(案例:痛点→做法→结果)/qa(Q&A)/conclusion(结论)/card(通栏列表) */
+window.POSTER_DATA = __DATA__;
+(function () {
+  const D = window.POSTER_DATA || {};
+  const page = document.getElementById('page');
+  const esc = s => (s == null ? '' : String(s))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const el = html => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
+
+  // 头图（meta / footer 允许原始 HTML，如 <br>）
+  const h = D.header || {};
+  page.appendChild(el(`
+    <div class="header">
+      <div class="eyebrow">${esc(h.eyebrow || '')}</div>
+      <div class="title">${esc(h.title || '')}</div>
+      <div class="subtitle">${esc(h.subtitle || '')}</div>
+      <div class="meta">${h.meta || ''}</div>
+    </div>`));
+
+  (D.blocks || []).forEach((b, i) => {
+    const num = i + 1;
+    if (b.type === 'core') {
+      const items = (b.items || []).map((t, idx) =>
+        `<div class="core-item"><div class="n">${idx + 1}</div><div>${esc(t)}</div></div>`).join('');
+      page.appendChild(el(`<div class="section"><div class="sec-head"><div class="sec-num">${num}</div><div class="sec-title">${esc(b.title || '核心心法')}</div></div><div class="card blue">${items}</div></div>`));
+    } else if (b.type === 'cases') {
+      const items = (b.items || []).map(c => `
+        <div class="card case" style="border-color:${esc(c.color || '#2b5cff')}">
+          <div class="c-name" style="color:${esc(c.color || '#2b5cff')}">${esc(c.name || '')}</div>
+          <div class="row"><div class="k">痛点</div><div class="v">${esc(c.pain || '')}</div></div>
+          <div class="row"><div class="k do">做法</div><div class="v">${esc(c.do || '')}</div></div>
+          <div class="row"><div class="k">结果</div><div class="v res">${esc(c.result || '')}</div></div>
+        </div>`).join('');
+      page.appendChild(el(`<div class="section"><div class="sec-head"><div class="sec-num">${num}</div><div class="sec-title">${esc(b.title || '案例')}</div></div>${items}</div>`));
+    } else if (b.type === 'qa') {
+      const items = (b.items || []).map(t =>
+        `<div class="qa-item"><div class="dot">·</div><div>${esc(t)}</div></div>`).join('');
+      page.appendChild(el(`<div class="section"><div class="sec-head"><div class="sec-num">${num}</div><div class="sec-title">${esc(b.title || 'Q&A')}</div></div><div class="card blue">${items}</div></div>`));
+    } else if (b.type === 'conclusion') {
+      page.appendChild(el(`<div class="section"><div class="sec-head"><div class="sec-num">${num}</div><div class="sec-title">${esc(b.title || '关键结论')}</div></div><div class="hl-card"><div class="q">${esc(b.text || '')}</div></div></div>`));
+    } else { // card / 通栏列表
+      const items = (b.items || []).map(t =>
+        `<div class="qa-item"><div class="dot">·</div><div>${esc(t)}</div></div>`).join('');
+      page.appendChild(el(`<div class="section"><div class="sec-head"><div class="sec-num">${num}</div><div class="sec-title">${esc(b.title || '')}</div></div><div class="card blue">${items}</div></div>`));
+    }
+  });
+
+  const f = D.footer || {};
+  page.appendChild(el(`<div class="footer"><div class="f1">${f.title || ''}</div><div>${f.sub || ''}</div></div>`));
+})();
+</script>
+</body>
+</html>
